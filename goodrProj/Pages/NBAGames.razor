@@ -1,0 +1,73 @@
+﻿@page "/"
+@using System.Text.Json
+@using System.Text.Json.Serialization;
+@using System.ComponentModel.DataAnnotations
+@using DataAccessLibrary.Model
+@using DataAccessLibrary
+
+@inject IHttpClientFactory ClientFactory
+@inject IAPIcall call
+
+<PageTitle>Using NBA API</PageTitle>
+<div style="color: white">
+  
+    <h2>I was going to make it so you could use any teams and have error handling if you tried to select the same team twice
+        butttt then I saw  "id": 103, "name": "Utah White" and wasn’t going to map 103 teams…</h2>
+  
+
+    @if (gamesInfo == null)
+    {
+        <p><em>@status</em></p>
+    }  else {
+          <table style="color:white" class="table">
+              <thead>
+                  <tr>
+                      <th>
+                          Game
+                      </th>
+                      <th>
+                          Time
+                      </th>
+                      <th>
+                          Team 1 and score
+                      </th>
+                      <th>
+                          Team 2 and score
+                      </th>
+                  </tr>
+              </thead>
+              <tbody>
+                @foreach(var game in gamesInfo)
+                {
+                    <tr>
+                        <td>
+                            @game.Game
+                        </td>
+                        <td>
+                            @game.time 
+                        </td>
+                        <td>
+                            @game.Team1 <img style="display:block;" width="10%" height="10%" src="@game.Logo1"/>   Score @game.Team1Score
+                        </td>
+                         <td>
+                            @game.Team2 <img style="display:block;" width="10%" height="10%" src="@game.Logo2" />  Score @game.Team2Score
+                        </td>
+                    </tr>
+                }
+            </tbody>
+          </table>
+        }
+
+</div>
+   
+
+@code {
+  
+    private string status = "waiting on work";
+    private List<GameInfo>? gamesInfo;
+    protected override async Task OnInitializedAsync()
+    {
+         gamesInfo = await call.Call(1,2,2021);
+    }
+  
+}

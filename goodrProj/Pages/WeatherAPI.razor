@@ -1,0 +1,233 @@
+﻿@page "/WeatherAPI"
+@using System.Text.Json
+@using System.Text.Json.Serialization;
+@using System.ComponentModel.DataAnnotations
+@using Newtonsoft.Json.Linq
+@inject IHttpClientFactory ClientFactory
+
+<PageTitle>Using an API</PageTitle>
+<div style="color: white">
+    <h1>Enter in your zipcode</h1>
+    <EditForm Model="@zipCode" OnValidSubmit="@getLogLat">
+        <DataAnnotationsValidator />
+    <ValidationSummary />
+        
+    <InputNumber onClick="this.select();" id="name" @bind-Value="zipCode.zip" />
+
+    <button class="btn btn-primary" type="submit">Submit</button>
+
+    </EditForm>
+
+<p role="status"> @message</p>
+
+
+
+
+@if (forcasts == null)
+    {
+        <p><em>@status</em></p>
+    }
+    else
+    {
+        <table style="color:white" class="table">
+            <thead>
+                <tr>
+                    <th>Day </th>
+                    <th>Date and time</th>
+                   
+                    <th>temperature in F</th>
+                    <th>Wind speed and direction </th>
+                    <th>Detailed Forcast</th>
+                </tr>
+            </thead>
+             <tbody>
+                @foreach(var forcast in forcasts)
+                {
+                    <tr>
+                     <td>@forcast.name</td>
+                     <td>@forcast.dateTime.ToShortDateString()</td>
+                   
+                     <td>@forcast.temp</td>
+                     <td>@forcast.windSpeed @forcast.windDir</td>
+                     <td>@forcast.detailedForcast</td>
+                 </tr> 
+                }
+                
+             </tbody>
+
+        </table>
+
+    }
+
+</div>
+@code {
+    private List<forcast>? forcasts;
+    private string message="";
+    private string status = "Waiting on work!";
+    private ZipCode zipCode= new ();
+    GeoLocation location = null;
+    public class ZipCode
+    {
+        [Required(ErrorMessage = "Please enter a vaild zip")]
+        public int zip { get; set; }
+    }
+
+    public class GeoLocation{
+        public double lat { get; set; }
+        public double lon { get; set; }    
+    }
+    public class forcast
+    {
+        public int number { get; set; }
+        public string name { get; set; }
+        public DateTime dateTime { get; set; }
+        public bool isDayTime { get; set; }
+        public double temp { get; set; }
+        public string windSpeed { get; set; }
+        public string windDir { get; set; } 
+        public string detailedForcast { get; set; }
+    }
+
+    private async Task getLogLat()
+    {
+        status = "Starting work......";
+        message="";
+        forcasts = null;
+        var request = new HttpRequestMessage(HttpMethod.Get,"http://www.mapquestapi.com/geocoding/v1/address?key=dlQql2KkQ9BHHZPxwPOMh6Zn57Z2GKml&location="+zipCode.zip);
+        var client = ClientFactory.CreateClient();
+        var response = await client.SendAsync(request);
+
+        if (response.IsSuccessStatusCode)
+        {
+            var responseString = await response.Content.ReadAsStringAsync();
+            // var result = JObject.Parse("ss");
+            JObject results = JObject.Parse(responseString);
+
+            var logLat = results.SelectToken("results[0].locations[0].latLng");
+
+            location = new GeoLocation
+                {
+                    lat = Convert.ToDouble(logLat["lat"]),
+            lon = Convert.ToDouble(logLat["lng"])
+            };
+            await firstCall(location);
+
+        }
+        else
+        {
+            status = "ERROR!";
+            message = " Please try again. If this message continues then there is something wrong with the map API. Shoot me an email at Jmellio27@gmail.com. THANKS!";
+
+        }
+    }
+    private async void test()
+    {
+        location = new GeoLocation
+            {
+                lat = 30.332184,
+                lon = -81.655647
+            };
+        await firstCall(location);
+    }
+    private async Task<List<forcast>> secoundCall(string url)
+    {
+         status = "Getting forcast secound call.....";
+        var request = new HttpRequestMessage(HttpMethod.Get,url);
+        var client = ClientFactory.CreateClient();
+        var productValue = new System.Net.Http.Headers.ProductInfoHeaderValue("BlazorApp", "1.0");
+        var commonValue = new System.Net.Http.Headers.ProductInfoHeaderValue("(me@josiahelliott.com)");
+        client.DefaultRequestHeaders.UserAgent.Add(productValue);
+        var response = await client.SendAsync(request);
+        if (response.IsSuccessStatusCode)
+        {
+            var responseString = await response.Content.ReadAsStringAsync();
+            var results = JObject.Parse(responseString).DescendantsAndSelf()
+                   .OfType<JProperty>()
+                   .Single(x=>x.Name.Equals("periods"))
+                   .Value;
+            List<forcast> forcasts = new List<forcast>();
+            foreach(JObject obj in results.Children<JObject>())
+            {
+                forcast forcast = new forcast
+                    {
+                        number = Int32.Parse(obj["number"].ToString()),
+                        name = obj["name"].ToString(),
+                        dateTime = DateTime.Parse(obj["startTime"].ToString()),
+                        isDayTime=   bool.Parse(obj["isDaytime"].ToString()),
+                        temp    = Int32.Parse(obj["temperature"].ToString()),
+                        windSpeed = obj["windSpeed"].ToString(),
+                        windDir =  obj["windDirection"].ToString(),
+                        detailedForcast = obj["detailedForecast"].ToString()
+                          };
+                forcasts.Add(forcast);
+
+            }
+
+            return forcasts;
+
+        }
+        else
+        {
+             status = "Error!";
+                     message = " Please try again. If this message continues then there is something wrong with the weather API. Shoot me an email at me@josiahelliott.com. THANKS!";
+        
+            return null;
+        }
+
+
+    }
+    private async Task firstCall(GeoLocation geoLocation)
+    {
+        var request = new HttpRequestMessage(HttpMethod.Get,"https://api.weather.gov/points/"+geoLocation.lat+","+geoLocation.lon);
+        //request.Headers.Add("Accept", "application/vnd.github.v3+json");
+        //  request.Headers.UserAgent.add("cat");
+        var client = ClientFactory.CreateClient();
+        var productValue = new System.Net.Http.Headers.ProductInfoHeaderValue("BlazorApp", "1.0");
+        var commonValue = new System.Net.Http.Headers.ProductInfoHeaderValue("(me@josiahelliott.com)");
+        client.DefaultRequestHeaders.UserAgent.Add(productValue);
+        var response = await client.SendAsync(request);
+        //  System.Diagnostics.Debug.Print(response.Content.ReadAsStreamAsync().ToString());
+
+        if (response.IsSuccessStatusCode)
+        {
+            status = "Getting forcast first call.....";
+            var responseString = await response.Content.ReadAsStringAsync();
+            // var result = JObject.Parse("ss");
+            var results = JObject.Parse(responseString).DescendantsAndSelf()
+                     .OfType<JProperty>()
+                     .Single(x=>x.Name.Equals("forecast"))
+                     .Value;
+            forcasts = await secoundCall(results.ToString()) ;
+
+            var cat = forcasts;
+        }
+        else
+        {   var responseString = await response.Content.ReadAsStringAsync();
+            // var result = JObject.Parse("ss");
+            JObject results = JObject.Parse(responseString);
+            //Data Unavailable For Requested Point
+            var errorCode = results.SelectToken("title").ToString();
+            if(string.Equals(errorCode, "Data Unavailable For Requested Point", StringComparison.OrdinalIgnoreCase))
+            {
+                status = "ERROR!";
+                message = "The zip code you entered was invalid. Please try again.";
+            }
+            else
+            {
+                status = "ERROR!";
+                message = " Please try again. If this message continues then there is something wrong with the weather API. Shoot me an email at me@josiahelliott.com. THANKS!";
+            }
+
+            
+
+        }
+    }
+  
+
+    }
+
+
+
+
+
+}
