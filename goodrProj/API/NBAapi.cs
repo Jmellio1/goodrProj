@@ -9,7 +9,7 @@ namespace goodrProj.API
     [ApiController]
     public class NBAapi : ControllerBase
     {
-        APIcall APIcall =new APIcall();
+         IAPIcall APIcall =new APIcall();
         private List<GameInfo>? gamesInfo;
         public async Task<List<GameInfo>> games()
         {
