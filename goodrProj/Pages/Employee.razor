@@ -1,0 +1,393 @@
+﻿@page "/Employees"
+@using DataAccessLibrary
+@using Syncfusion.Blazor.Data
+@using Syncfusion.Blazor.Charts
+@using DataAccessLibrary.Models
+@using goodrProj.Models
+@inject IEmployeeData _db
+@inject NavigationManager NavigationManager
+@inject ISqlAccess test
+
+<h1  style="color:white" >Employee information</h1>
+<h4  style="color:white">Add new employee</h4>
+<EditForm Model="@newEmployee" OnValidSubmit="@InsertEmployee">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+    <InputText id="firstName" placeholder="First Name" @bind-Value="@newEmployee.FirstName" />
+    <InputText id="MiddleName" placeholder="Middle Name( Optional )" @bind-Value="@newEmployee.MiddleName" />
+    <InputText id="LastName" placeholder="Last Name" @bind-Value="@newEmployee.LastName" />
+    <InputSelect id="Department" @bind-Value="@newEmployee.Department">
+        Please select
+        <option value="Accounting">Accounting</option>
+        <option value="Advertising">Advertising</option>
+        <option value="Asset Management">Asset Management</option>
+        <option value="Customer Relations">Customer Relations</option>
+        <option value="Customer Service">Customer Service</option>
+        <option value="Finances">Finances</option>
+        <option value="Human Resources">Human Resources</option>
+        <option value="Legal Department">Legal Department</option>
+        <option value="Media Relations">Media Relations</option>
+        <option value="Payroll">Payroll</option>
+        <option value="Public Relations">Public Relations</option>
+        <option value="Quality Assurance">Quality Assurance</option>
+        <option value="Sales and Marketing">Sales and Marketing</option>
+        <option value="Research and Development">Research and Development</option>
+        <option value="Tech Support">Tech Support</option>
+
+    </InputSelect>
+    <InputText id="EmailAddress" placeholder="Email Address" @bind-Value="@newEmployee.EmailAddress" />
+    <InputText id="Number" placeholder="Phone Number" @bind-Value="@newEmployee.Number" />
+    <InputSelect id="Gender" @bind-Value="@newEmployee.Gender">
+        <option value="MALE">MALE</option>
+        <option value="FEMALE">FEMALE</option>
+    </InputSelect>
+    <button type="submit" class="btn btn-primary">Submit</button>
+</EditForm>
+
+   @if (employees is null)
+    {
+    <h1 style="color:red"><em>Loading...</em></h1>
+    }
+    else
+    {
+<h1  style="color:white">Live statistics from Employee Directory of @employees.Count employees </h1>
+    }
+<div  style="color:white" >
+    <div style=" float: left">
+        <div class="control-section" style="width:50% ">
+            <SfAccumulationChart Title="Department Statistics" EnableAnimation="false">
+                <AccumulationChartEvents Load="BeforeRender" />
+                <AccumulationChartTooltipSettings Enable="true"></AccumulationChartTooltipSettings>
+                <AccumulationChartLegendSettings Visible="false"></AccumulationChartLegendSettings>
+                <AccumulationChartSeriesCollection>
+                    <AccumulationChartSeries DataSource="@DepartmentStatistics" XName="xValue" YName="yValue" Name="Department" Radius="70%" StartAngle="0" EndAngle="360"
+                                             InnerRadius="0%" ExplodeIndex="1" Explode="true" ExplodeOffset="10%">
+                        <AccumulationDataLabelSettings Visible="true" Name="xValue" Position="AccumulationLabelPosition.Outside"></AccumulationDataLabelSettings>
+                    </AccumulationChartSeries>
+                </AccumulationChartSeriesCollection>
+            </SfAccumulationChart>
+        </div>
+    </div>
+    <div style=" float: right">
+        <div class="control-section" style="width:50%">
+            <SfAccumulationChart SelectionMode="AccumulationSelectionMode.Point" Title="Gender Statistics" SelectionPattern="SelectionPattern.DiagonalForward">
+                <AccumulationChartEvents Load="BeforeRender" />
+                <AccumulationChartTooltipSettings Enable="false"></AccumulationChartTooltipSettings>
+                <AccumulationChartLegendSettings ToggleVisibility=false Position="LegendPosition.Right" Height="28%" Width="44%"></AccumulationChartLegendSettings>
+                <AccumulationChartSeriesCollection>
+                    <AccumulationChartSeries DataSource="@DataSource" XName="xValue" YName="yValue" Name="Revenue" InnerRadius="40%">
+                        <AccumulationDataLabelSettings Name="${point.y}" Visible="true">
+                            <AccumulationChartDataLabelFont FontWeight="600" Color="white"></AccumulationChartDataLabelFont>
+                        </AccumulationDataLabelSettings>
+                    </AccumulationChartSeries>
+                </AccumulationChartSeriesCollection>
+            </SfAccumulationChart>
+            </div>
+       </div>
+ </div>
+ 
+@if (employee is null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{ 
+    <table style="color:white" class=" table table-striped">
+        <thead>
+            <tr>
+                <th>Employee ID </th>
+                <th>First Name  </th>
+                <th>Middle Name </th>
+                <th>Last Name</th>
+                <th>Department </th>
+                <th>EmailAddress</th>
+                <th>Number</th>
+                <th>Gender</th>
+            </tr>
+        </thead>
+        <tbody  style="color:white">
+            @foreach (var emp in employee)
+            {
+                <tr>
+                    <td style="color:white">@emp.ID </td>
+                    <td style="color:white">@emp.FirstName </td>
+                    <td style="color:white">@emp.MiddleName </td>
+                    <td style="color:white">@emp.LastName </td>
+                    <td style="color:white">@emp.Department </td>
+                    <td style="color:white">@emp.EmailAddress </td>
+                    <td style="color:white">@emp.Number </td>
+                    <td style="color:white">@emp.Gender </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+@code {
+    private List<EmployeeModel> employee;
+    private DisplayEmployee newEmployee = new DisplayEmployee();
+
+    protected override async Task OnInitializedAsync()
+    {
+        employee = await _db.GetEmployee();
+
+          int[] countDepartments = new int[16];
+
+            employees = await _db.GetEmployee();
+
+            foreach (var emp in employees)
+            {
+                if (emp.Department.Equals("Accounting", StringComparison.OrdinalIgnoreCase))
+                {
+                    countDepartments[0] += 1;
+                }
+                else if (emp.Department.Equals("Advertising", StringComparison.OrdinalIgnoreCase))
+                {
+                    countDepartments[1] += 1;
+                }
+                else if (emp.Department.Equals("Asset Management", StringComparison.OrdinalIgnoreCase))
+                {
+                    countDepartments[2] += 1;
+                }
+                else if (emp.Department.Equals("Customer Relations", StringComparison.OrdinalIgnoreCase))
+                {
+                    countDepartments[3] += 1;
+                }
+                else if (emp.Department.Equals("Customer Service", StringComparison.OrdinalIgnoreCase))
+                {
+                    countDepartments[4] += 1;
+                }
+                else if (emp.Department.Equals("Finances", StringComparison.OrdinalIgnoreCase))
+                {
+                    countDepartments[5] += 1;
+                }
+                else if (emp.Department.Equals("Human Resources", StringComparison.OrdinalIgnoreCase))
+                {
+                    countDepartments[6] += 1;
+                }
+                else if (emp.Department.Equals("Legal Department", StringComparison.OrdinalIgnoreCase))
+                {
+                    countDepartments[7] += 1;
+                }
+                else if (emp.Department.Equals("Media Relations", StringComparison.OrdinalIgnoreCase))
+                {
+                    countDepartments[8] += 1;
+                }
+                else if (emp.Department.Equals("Payroll", StringComparison.OrdinalIgnoreCase))
+                {
+                    countDepartments[9] += 1;
+                }
+                else if (emp.Department.Equals("Public Relations", StringComparison.OrdinalIgnoreCase))
+                {
+                    countDepartments[10] += 1;
+                }
+                else if (emp.Department.Equals("Quality Assurance", StringComparison.OrdinalIgnoreCase))
+                {
+                    countDepartments[11] += 1;
+                }
+                else if (emp.Department.Equals("Sales and Marketing", StringComparison.OrdinalIgnoreCase))
+                {
+                    countDepartments[12] += 1;
+                }
+                else if (emp.Department.Equals("Research and Development", StringComparison.OrdinalIgnoreCase))
+                {
+                    countDepartments[13] += 1;
+                }
+                else if (emp.Department.Equals("Tech Support", StringComparison.OrdinalIgnoreCase))
+                {
+                    countDepartments[14] += 1;
+                }
+                else
+                {
+                    countDepartments[15] += 1;
+                }
+
+
+            }
+
+            PieData1 Accounting = new PieData1
+            {
+                xValue = "Accounting",
+                yValue = countDepartments[0]
+            };
+            PieData1 Advertising = new PieData1
+            {
+                xValue = "Advertising",
+                yValue = countDepartments[1]
+            };
+
+            PieData1 AM = new PieData1
+            {
+                xValue = "Asset Management",
+                yValue = countDepartments[2]
+            };
+            PieData1 CR = new PieData1
+            {
+                xValue = "Customer Relations",
+                yValue = countDepartments[3]
+            };
+            PieData1 CS = new PieData1
+            {
+                xValue = "Customer Service",
+                yValue = countDepartments[4]
+            };
+            PieData1 Finances = new PieData1
+            {
+                xValue = "Finances",
+                yValue = countDepartments[5]
+            };
+            PieData1 HR = new PieData1
+            {
+                xValue = "Human Resources",
+                yValue = countDepartments[6]
+            };
+            PieData1 Legal = new PieData1
+            {
+                xValue = "Legal Department",
+                yValue = countDepartments[7]
+            };
+            PieData1 MRe = new PieData1
+            {
+                xValue = "Media Relations",
+                yValue = countDepartments[8]
+            };
+            PieData1 Payroll = new PieData1
+            {
+                xValue = "Payroll",
+                yValue = countDepartments[9]
+            };
+            PieData1 hr = new PieData1
+            {
+                xValue = "Public Relations",
+                yValue = countDepartments[10]
+            };
+            PieData1 QA = new PieData1
+            {
+                xValue = "Quality Assurance",
+                yValue = countDepartments[11]
+            };
+            PieData1 SaM = new PieData1
+            {
+                xValue = "Sales and Marketing",
+                yValue = countDepartments[12]
+            };
+
+            PieData1 RaD = new PieData1
+            {
+                xValue = "Research and Development",
+                yValue = countDepartments[14]
+            };
+
+            PieData1 Tech_Support = new PieData1
+            {
+                xValue = "Tech Support",
+                yValue = countDepartments[14]
+            };
+            PieData1 other = new PieData1
+            {
+                xValue = "Other",
+                yValue = countDepartments[15]
+            };
+
+            DepartmentStatistics.AddRange(new List<PieData1> {
+
+
+                            other, Tech_Support,RaD,SaM,QA,hr,Payroll,MRe,Legal,HR,Finances,CS,CR,Advertising,AM,Accounting
+
+
+                        });
+
+
+            var hold = test.GetGenderNumbers();
+
+            PieData data1 = new PieData
+            {
+                xValue = "Male",
+                yValue = hold[0],
+                text = hold[0].ToString(),
+
+
+            };
+            DataSource.Add(data1);
+            PieData data2 = new PieData
+            {
+                xValue = "Female",
+                yValue = hold[1],
+                text = hold[1].ToString(),
+
+
+            };
+            DataSource.Add(data2);
+            PieData data3 = new PieData
+            {
+                xValue = "Other",
+                yValue = hold[2],
+                text = hold[2].ToString(),
+
+
+            };
+            DataSource.Add(data3);
+
+
+    }
+    private async Task InsertEmployee()
+    {
+        EmployeeModel person = new EmployeeModel
+        {
+            FirstName = newEmployee.FirstName,
+            LastName = newEmployee.LastName,
+            MiddleName = newEmployee.MiddleName,
+            Department = newEmployee.Department,
+            EmailAddress = newEmployee.EmailAddress,
+            Gender = newEmployee.Gender,
+            Number = newEmployee.Number
+        };
+
+        await _db.InsertEmployee(person);
+
+        NavigationManager.NavigateTo("Employees", true);
+    }
+
+        private List<PieData1> DepartmentStatistics = new List<PieData1>();
+        public List<PieData> DataSource = new List<PieData>();
+        public class PieData
+        {
+            public string xValue { get; set; }
+            public double yValue { get; set; }
+            public string text { get; set; }
+        }
+        public class PieData1
+        {
+            public string xValue { get; set; }
+            public double yValue { get; set; }
+            public string r { get; set; }
+        }
+
+        private List<EmployeeModel> employees;
+        
+        string CurrentUri;
+        void BeforeRender(IAccLoadedEventArgs Args)
+        {
+            CurrentUri = NavigationManager.Uri;
+            if (CurrentUri.IndexOf("material") > -1)
+            {
+                Args.Theme = AccumulationTheme.Material;
+            }
+            else if (CurrentUri.IndexOf("fabric") > -1)
+            {
+                Args.Theme = AccumulationTheme.Fabric;
+            }
+            else if (CurrentUri.IndexOf("bootstrap") > -1)
+            {
+                Args.Theme = AccumulationTheme.Bootstrap;
+            }
+            else if (CurrentUri.IndexOf("highcontrast") > -1)
+            {
+                Args.Theme = AccumulationTheme.HighContrast;
+            }
+            else
+            {
+                Args.Theme = AccumulationTheme.Bootstrap4;
+            }
+        }
+
+}
